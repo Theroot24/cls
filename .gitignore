@@ -1,0 +1,26 @@
+# Per-host generated state — must never be committed
+session-registry.md
+*.registry.md
+
+# Claude Code native data (not ours) — guard against accidental copy into repo
+sessions/
+projects/
+*.jsonl
+
+# Claude Code project-local sync (plan 파일 등) — cls 코드 아님
+.claude/
+
+# Test scratch / temp artifacts
+tests/**/tmp/
+*.tmp
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# OS cruft (repo cloned on macOS + Ubuntu)
+.DS_Store
+
+# install/uninstall backups (created in user $HOME, defensive)
+*.cls.bak
