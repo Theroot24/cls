@@ -21,17 +21,21 @@ _file_mtime_ts() {
   python3 -c "import os,sys,datetime as d;print(d.datetime.fromtimestamp(os.stat(sys.argv[1]).st_mtime).strftime('%Y-%m-%d %H:%M'))" "$1" 2>/dev/null
 }
 
-# pid → 매칭 session 파일 경로 (declare -A 대체, bash 3.2 호환). 없으면 빈 값.
-_session_file_for_pid() {
-  local pid="$1" sf p
+# sessions의 pid→file 맵을 1회 구축 ("pid<TAB>file" 라인들).
+# 원본 `declare -A SESSION_PIDS` collect-once 의미를 bash 3.2 호환으로 복원:
+# PPID walk에서 ancestor마다 전수 재스캔(O(ancestor×N) jq)하지 않고, 본 맵을 1회만 만든다.
+_build_pid_map() {
+  local sf pid
   for sf in "$SESSIONS_DIR"/*.json; do
     [ -f "$sf" ] || continue
-    p=$(jq -r '.pid // empty' "$sf" 2>/dev/null)
-    if [ "$p" = "$pid" ]; then
-      printf '%s' "$sf"
-      return 0
-    fi
+    pid=$(jq -r '.pid // empty' "$sf" 2>/dev/null)
+    [ -n "$pid" ] && printf '%s\t%s\n' "$pid" "$sf"
   done
+}
+
+# 사전 구축된 $_PID_MAP에서 pid 매칭 파일 조회 (jq 없이 awk). 없으면 빈 값.
+_session_file_for_pid() {
+  printf '%s\n' "${_PID_MAP:-}" | awk -F'\t' -v p="$1" '$1==p {print $2; exit}'
 }
 
 # away_summary(최신 timestamp) 추출 → 정제된 한 줄, 없으면 빈 값.
@@ -144,7 +148,10 @@ HEADER
 # ── Hook 본체 ─────────────────────────────────────────────────────────────────
 _track_session_main() {
   local SESSION_ID="" SESSION_FILE="" TEAM_NAME="" CURRENT_PID CWD
-  local PROJECT_HASH TRANSCRIPT TIMESTAMP DESCRIPTION i
+  local PROJECT_HASH TRANSCRIPT TIMESTAMP DESCRIPTION i _PID_MAP
+
+  # 0. sessions pid→file 맵 1회 구축 (ancestor 루프 내 jq 반복 호출 방지)
+  _PID_MAP="$(_build_pid_map)"
 
   # 1. 현재 PID부터 부모를 따라 올라가며 sessions/*.json의 pid와 매칭 (최대 10단계)
   CURRENT_PID=$$

@@ -86,12 +86,17 @@ eq "[9] 50-cap (60삽입→50유지)" "50" "$data_rows"
 eq "[9b] 오래된 행 제거" "0" "$(grep -c 'sid-cap-0001' "$TRACK_SESSION_REGISTRY")"
 eq "[9c] 최신 행 유지" "1" "$(grep -c 'sid-cap-0060' "$TRACK_SESSION_REGISTRY")"
 
-echo "== _session_file_for_pid (declare -A 대체) =="
+echo "== _build_pid_map + _session_file_for_pid (declare -A 대체, single-pass) =="
 printf '{"pid":12345,"sessionId":"sess-aaaa","cwd":"/x/p","name":"T"}' > "$TRACK_SESSION_SESSIONS_DIR/a.json"
 printf '{"pid":67890,"sessionId":"sess-bbbb","cwd":"/y/q"}' > "$TRACK_SESSION_SESSIONS_DIR/b.json"
-eq "[10] pid 매칭 파일" "$TRACK_SESSION_SESSIONS_DIR/a.json" "$(_session_file_for_pid 12345)"
+_PID_MAP="$(_build_pid_map)"   # 1회 구축 (원본 'collect once' 의미 복원)
+eq "[10] _build_pid_map: pid 2개 수집" "2" "$(printf '%s\n' "$_PID_MAP" | grep -c $'\t')"
+eq "[10a] pid 매칭 파일" "$TRACK_SESSION_SESSIONS_DIR/a.json" "$(_session_file_for_pid 12345)"
 eq "[10b] 다른 pid" "$TRACK_SESSION_SESSIONS_DIR/b.json" "$(_session_file_for_pid 67890)"
 eq "[10c] 미존재 pid → 빈 값" "" "$(_session_file_for_pid 99999)"
+# 맵 비었을 때(빈 sessions) 안전
+_PID_MAP=""
+eq "[10d] 빈 맵 → 빈 값" "" "$(_session_file_for_pid 12345)"
 
 echo
 printf 'RESULT: %d passed, %d failed\n' "$PASS" "$FAIL"
