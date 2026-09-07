@@ -73,6 +73,7 @@ cls_inject_alias() {
   [ -e "$rc" ] || : > "$rc"
   # 1회성 백업
   [ -f "$rc.cls.bak" ] || cp -p "$rc" "$rc.cls.bak" 2>/dev/null || true
+  chmod 600 "$rc.cls.bak" 2>/dev/null || true
   tmp="$(mktemp "${rc}.cls.XXXXXX")"
   # 기존 마커블록 제거 (멱등) — 마커 사이 범위 삭제
   awk -v s="$MARK_START" -v e="$MARK_END" '
@@ -101,6 +102,8 @@ cls_symlink_scripts() {
       :  # 이미 우리 symlink → 백업 불필요 (멱등)
     elif [ -e "$target" ] || [ -L "$target" ]; then
       cp -P "$target" "$target.cls.bak" 2>/dev/null || true  # 기존 파일/타 symlink 백업
+      # .bak이 symlink면 chmod가 링크 대상(원본)을 바꾸므로 실파일일 때만 적용
+      [ -f "$target.cls.bak" ] && [ ! -L "$target.cls.bak" ] && chmod 600 "$target.cls.bak" 2>/dev/null || true
     fi
     ln -sf "$CLS_HOME/$src" "$target"
   done < <(_cls_links)
@@ -116,6 +119,7 @@ cls_merge_settings() {
   if [ ! -s "$settings" ]; then printf '{}' > "$settings"; fi
   # 1회성 백업
   [ -f "$settings.cls.bak" ] || cp -p "$settings" "$settings.cls.bak" 2>/dev/null || true
+  chmod 600 "$settings.cls.bak" 2>/dev/null || true
   tmp="$(mktemp "${settings}.cls.XXXXXX")"
   if jq --arg cmd "$cmd" --arg mode add -f "$CLS_HOME/lib/merge.jq" "$settings" > "$tmp" 2>/dev/null \
        && [ -s "$tmp" ] && jq -e . "$tmp" >/dev/null 2>&1; then

@@ -71,11 +71,13 @@ _registry_upsert "/x/p1" "sid-1111-aaaa" "2026-06-16 10:00" "desc one"
 ok_hdr=$(grep -c '^| Path | Session ID' "$TRACK_SESSION_REGISTRY")
 eq "[7] header 자동 생성" "1" "$ok_hdr"
 eq "[7b] 행 1개" "1" "$(grep -c 'sid-1111-aaaa' "$TRACK_SESSION_REGISTRY")"
+eq "[7c] 최초 생성 권한 600" "600" "$(stat -c '%a' "$TRACK_SESSION_REGISTRY")"
 
 # 같은 sid 재삽입 → dedup (1개 유지)
 _registry_upsert "/x/p1" "sid-1111-aaaa" "2026-06-16 10:05" "desc updated"
 eq "[8] 동일 sid dedup → 1개" "1" "$(grep -c 'sid-1111-aaaa' "$TRACK_SESSION_REGISTRY")"
 eq "[8b] 최신 desc 반영" "1" "$(grep -c 'desc updated' "$TRACK_SESSION_REGISTRY")"
+eq "[8c] dedup(mv) 후에도 권한 600" "600" "$(stat -c '%a' "$TRACK_SESSION_REGISTRY")"
 
 # 50-cap: 60개 삽입 → 최대 50개 데이터행
 rm -f "$TRACK_SESSION_REGISTRY"
@@ -85,6 +87,7 @@ eq "[9] 50-cap (60삽입→50유지)" "50" "$data_rows"
 # 가장 오래된 것(sid-cap-0001~0010)은 제거됨
 eq "[9b] 오래된 행 제거" "0" "$(grep -c 'sid-cap-0001' "$TRACK_SESSION_REGISTRY")"
 eq "[9c] 최신 행 유지" "1" "$(grep -c 'sid-cap-0060' "$TRACK_SESSION_REGISTRY")"
+eq "[9d] 50-cap(mv) 후에도 권한 600" "600" "$(stat -c '%a' "$TRACK_SESSION_REGISTRY")"
 
 echo "== _build_pid_map + _session_file_for_pid (declare -A 대체, single-pass) =="
 printf '{"pid":12345,"sessionId":"sess-aaaa","cwd":"/x/p","name":"T"}' > "$TRACK_SESSION_SESSIONS_DIR/a.json"

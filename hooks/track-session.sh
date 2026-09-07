@@ -143,6 +143,10 @@ HEADER
     tail -n "$max_entries" "$REGISTRY" >> "${REGISTRY}.tmp"
     mv "${REGISTRY}.tmp" "$REGISTRY"
   fi
+  # registry에는 사용자 프롬프트 발췌가 담기므로 소유자 전용으로 고정한다.
+  # 파일을 갈아끼우는 경로가 셋(heredoc / dedup mv / 50-cap mv)이고 뒤 둘의 .tmp는
+  # 리다이렉트 산물(umask 반영)이라 mv가 그 모드를 승계한다 → 함수 말미에서 일괄 적용.
+  chmod 600 "$REGISTRY" 2>/dev/null || true
 }
 
 # ── Hook 본체 ─────────────────────────────────────────────────────────────────
